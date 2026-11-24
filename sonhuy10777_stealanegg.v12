@@ -1,0 +1,530 @@
+--// CHILLI X VENYX V12 - KEY SYSTEM
+--// RED & BLACK | ANIMATED | RESPONSIVE
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+-- Remove old UI
+local OldUI = PlayerGui:FindFirstChild("ChilliVenyxUI")
+if OldUI then
+	OldUI:Destroy()
+end
+
+-- CONFIG
+local GET_KEY_URL = "https://link4m.net/uRTaWZv"
+local KEY_TTL_SECONDS = 24 * 60 * 60
+local CACHE_FILE = "ChilliVenyxUI_KeyCache.json"
+
+local VALID_KEYS = {
+	["ChilliXVenyxV12SonHuyKeyJsjsbwkwjLzkwhkwwjLakbwkwoweij"] = true,
+	["CHILLI-VIP"] = true,
+	["VENYX-V12"] = true,
+}
+
+-- Main Script Loader
+local hasLaunchedScript = false
+local function RunMainScript()
+	if hasLaunchedScript then
+		return
+	end
+	hasLaunchedScript = true
+
+	task.spawn(function()
+		local ok, err = pcall(function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/thuyngudot42-svg/chilliv12/refs/heads/main/chilli-venyx-divine-sonhuy1077.Lua"))()
+		end)
+		if not ok then
+			warn("[ChilliVenyxUI] Failed to load script:", err)
+		end
+	end)
+end
+
+-- PALETTE
+local THEME = {
+	Red = Color3.fromRGB(255, 35, 45),
+	RedHover = Color3.fromRGB(255, 70, 80),
+	DarkRed = Color3.fromRGB(150, 0, 10),
+	Black = Color3.fromRGB(12, 12, 15),
+	Dark = Color3.fromRGB(20, 20, 24),
+	DarkHover = Color3.fromRGB(48, 48, 56),
+	ButtonDark = Color3.fromRGB(35, 35, 40),
+	White = Color3.fromRGB(255, 255, 255),
+	Gray = Color3.fromRGB(155, 155, 165),
+	Border = Color3.fromRGB(55, 55, 60),
+	SuccessBg = Color3.fromRGB(15, 45, 25),
+	SuccessBorder = Color3.fromRGB(50, 255, 120),
+	SuccessText = Color3.fromRGB(80, 255, 130),
+	ErrorBg = Color3.fromRGB(45, 12, 15),
+	ErrorText = Color3.fromRGB(255, 100, 100),
+}
+
+local MAIN_SIZE = UDim2.fromOffset(390, 275)
+local MAIN_CENTER = UDim2.new(0.5, -MAIN_SIZE.X.Offset / 2, 0.5, -MAIN_SIZE.Y.Offset / 2)
+
+-- Helpers: Clipboard & File cache
+local function CopyToClipboard(text: string): boolean
+	local clipFn = (typeof(setclipboard) == "function" and setclipboard)
+		or (typeof(toclipboard) == "function" and toclipboard)
+		or (typeof(set_clipboard) == "function" and set_clipboard)
+
+	if clipFn then
+		local ok = pcall(clipFn, text)
+		return ok
+	end
+	return false
+end
+
+local memoryCache: { key: string, savedAt: number }? = nil
+
+local function ReadKeyCache(): { key: string, savedAt: number }?
+	if typeof(isfile) == "function" and typeof(readfile) == "function" then
+		local existsOk, exists = pcall(isfile, CACHE_FILE)
+		if existsOk and exists then
+			local readOk, raw = pcall(readfile, CACHE_FILE)
+			if readOk and type(raw) == "string" then
+				local decodeOk, decoded = pcall(function()
+					return HttpService:JSONDecode(raw)
+				end)
+				if decodeOk and type(decoded) == "table" and type(decoded.key) == "string" and type(decoded.savedAt) == "number" then
+					return decoded
+				end
+			end
+		end
+	end
+	return memoryCache
+end
+
+local function WriteKeyCache(key: string, savedAt: number)
+	local payload = { key = key, savedAt = savedAt }
+	memoryCache = payload
+
+	if typeof(writefile) == "function" then
+		local encoded = HttpService:JSONEncode(payload)
+		pcall(writefile, CACHE_FILE, encoded)
+	end
+end
+
+local function IsKeyValid(key: string): boolean
+	return VALID_KEYS[key] == true
+end
+
+local function HasValidCachedKey(): boolean
+	local cached = ReadKeyCache()
+	if not cached then
+		return false
+	end
+
+	local elapsed = os.time() - cached.savedAt
+	if elapsed < 0 or elapsed > KEY_TTL_SECONDS then
+		return false
+	end
+
+	return IsKeyValid(cached.key)
+end
+
+-- Auto-run if valid key was saved within 24 hours
+if HasValidCachedKey() then
+	local cached = ReadKeyCache()
+	if cached then
+		WriteKeyCache(cached.key, cached.savedAt)
+	end
+	RunMainScript()
+	return
+end
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ChilliVenyxUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 999
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+-- Main Container
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = MAIN_SIZE
+Main.Position = MAIN_CENTER
+Main.BackgroundColor3 = THEME.Black
+Main.BorderSizePixel = 0
+Main.ClipsDescendants = false
+Main.Visible = true
+Main.Parent = ScreenGui
+
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 15)
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = THEME.Red
+MainStroke.Thickness = 1.5
+MainStroke.Transparency = 0.15
+MainStroke.Parent = Main
+
+-- Scale helper for small screens
+local Scale = Instance.new("UIScale")
+Scale.Scale = 0.85
+Scale.Parent = Main
+
+local function UpdateScale()
+	local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+	local fitX = (viewport.X - 24) / MAIN_SIZE.X.Offset
+	local fitY = (viewport.Y - 24) / MAIN_SIZE.Y.Offset
+	Scale.Scale = math.clamp(math.min(fitX, fitY, 1), 0.7, 1)
+end
+
+UpdateScale()
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateScale)
+end
+
+-- Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 65)
+Header.BackgroundColor3 = THEME.Dark
+Header.BorderSizePixel = 0
+Header.Parent = Main
+
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 15)
+
+local HeaderFix = Instance.new("Frame")
+HeaderFix.Size = UDim2.new(1, 0, 0, 15)
+HeaderFix.Position = UDim2.new(0, 0, 1, -15)
+HeaderFix.BackgroundColor3 = THEME.Dark
+HeaderFix.BorderSizePixel = 0
+HeaderFix.Parent = Header
+
+-- Logo
+local Logo = Instance.new("TextLabel")
+Logo.Size = UDim2.fromOffset(45, 45)
+Logo.Position = UDim2.fromOffset(15, 10)
+Logo.BackgroundColor3 = THEME.Red
+Logo.Text = "🌶️"
+Logo.TextSize = 24
+Logo.Font = Enum.Font.GothamBlack
+Logo.TextColor3 = THEME.White
+Logo.BorderSizePixel = 0
+Logo.Parent = Header
+
+Instance.new("UICorner", Logo).CornerRadius = UDim.new(0, 12)
+
+-- Title & Subtitle
+local Title = Instance.new("TextLabel")
+Title.Position = UDim2.fromOffset(70, 8)
+Title.Size = UDim2.new(1, -108, 0, 27)
+Title.BackgroundTransparency = 1
+Title.Text = "CHILLI X VENYX V12"
+Title.TextColor3 = THEME.White
+Title.TextSize = 17
+Title.Font = Enum.Font.GothamBlack
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Position = UDim2.fromOffset(70, 35)
+Subtitle.Size = UDim2.new(1, -108, 0, 18)
+Subtitle.BackgroundTransparency = 1
+Subtitle.Text = "KEY SYSTEM"
+Subtitle.TextColor3 = THEME.Red
+Subtitle.TextSize = 11
+Subtitle.Font = Enum.Font.GothamBold
+Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+Subtitle.Parent = Header
+
+-- Close Button
+local Close = Instance.new("TextButton")
+Close.Name = "Close"
+Close.Size = UDim2.fromOffset(28, 28)
+Close.Position = UDim2.new(1, -38, 0, 10)
+Close.BackgroundColor3 = THEME.ButtonDark
+Close.Text = "×"
+Close.TextColor3 = THEME.White
+Close.TextSize = 22
+Close.Font = Enum.Font.GothamBold
+Close.BorderSizePixel = 0
+Close.Parent = Header
+
+Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 8)
+
+Close.MouseButton1Click:Connect(function()
+	ScreenGui:Destroy()
+end)
+
+-- Dragging via Header
+do
+	local dragging = false
+	local dragStart: Vector2?
+	local startPos: UDim2?
+
+	Header.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = Main.Position
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and dragStart and startPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			Main.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X / Scale.Scale,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y / Scale.Scale
+			)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+end
+
+-- Description
+local Description = Instance.new("TextLabel")
+Description.Position = UDim2.fromOffset(20, 80)
+Description.Size = UDim2.new(1, -40, 0, 22)
+Description.BackgroundTransparency = 1
+Description.Text = "Enter your key below"
+Description.TextColor3 = THEME.Gray
+Description.TextSize = 12
+Description.Font = Enum.Font.GothamMedium
+Description.TextXAlignment = Enum.TextXAlignment.Left
+Description.Parent = Main
+
+-- Input Box
+local InputBox = Instance.new("Frame")
+InputBox.Position = UDim2.fromOffset(20, 108)
+InputBox.Size = UDim2.new(1, -40, 0, 42)
+InputBox.BackgroundColor3 = THEME.Dark
+InputBox.BorderSizePixel = 0
+InputBox.ClipsDescendants = true
+InputBox.Parent = Main
+
+Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 9)
+
+local InputStroke = Instance.new("UIStroke")
+InputStroke.Color = THEME.Border
+InputStroke.Thickness = 1
+InputStroke.Parent = InputBox
+
+local Input = Instance.new("TextBox")
+Input.Position = UDim2.fromOffset(12, 0)
+Input.Size = UDim2.new(1, -24, 1, 0)
+Input.BackgroundTransparency = 1
+Input.Text = ""
+Input.PlaceholderText = "Enter Key..."
+Input.PlaceholderColor3 = THEME.Gray
+Input.TextColor3 = THEME.White
+Input.TextSize = 13
+Input.Font = Enum.Font.GothamMedium
+Input.ClearTextOnFocus = false
+Input.TextWrapped = false
+Input.TextTruncate = Enum.TextTruncate.None
+Input.TextXAlignment = Enum.TextXAlignment.Left
+Input.ClipsDescendants = true
+Input.Parent = InputBox
+
+-- Button Container
+local Buttons = Instance.new("Frame")
+Buttons.Position = UDim2.fromOffset(20, 165)
+Buttons.Size = UDim2.new(1, -40, 0, 43)
+Buttons.BackgroundTransparency = 1
+Buttons.Parent = Main
+
+local Layout = Instance.new("UIListLayout")
+Layout.FillDirection = Enum.FillDirection.Horizontal
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.VerticalAlignment = Enum.VerticalAlignment.Center
+Layout.Padding = UDim.new(0, 10)
+Layout.Parent = Buttons
+
+local function CreateButton(name: string, text: string, baseColor: Color3, hoverColor: Color3)
+	local Button = Instance.new("TextButton")
+	Button.Name = name
+	Button.Size = UDim2.new(0.5, -5, 1, 0)
+	Button.BackgroundColor3 = baseColor
+	Button.BorderSizePixel = 0
+	Button.Text = text
+	Button.TextColor3 = THEME.White
+	Button.TextSize = 14
+	Button.Font = Enum.Font.GothamBlack
+	Button.AutoButtonColor = false
+	Button.Parent = Buttons
+
+	Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 9)
+
+	local Stroke = Instance.new("UIStroke")
+	Stroke.Color = hoverColor
+	Stroke.Thickness = 1
+	Stroke.Transparency = 0.55
+	Stroke.Parent = Button
+
+	local activeTween: Tween?
+	local function tweenBg(targetColor: Color3)
+		if activeTween then
+			activeTween:Cancel()
+		end
+		activeTween = TweenService:Create(Button, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundColor3 = targetColor,
+		})
+		activeTween:Play()
+	end
+
+	Button.MouseEnter:Connect(function()
+		tweenBg(hoverColor)
+	end)
+
+	Button.MouseLeave:Connect(function()
+		tweenBg(baseColor)
+	end)
+
+	return Button
+end
+
+local Check = CreateButton("CheckKey", "CHECK KEY", THEME.Red, THEME.RedHover)
+local GetKey = CreateButton("GetKey", "GET KEY", THEME.ButtonDark, THEME.DarkHover)
+
+-- Notification Banner
+local Notice = Instance.new("Frame")
+Notice.Position = UDim2.fromOffset(20, 220)
+Notice.Size = UDim2.new(1, -40, 0, 30)
+Notice.BackgroundColor3 = THEME.Dark
+Notice.BorderSizePixel = 0
+Notice.ClipsDescendants = true
+Notice.Visible = false
+Notice.Parent = Main
+
+Instance.new("UICorner", Notice).CornerRadius = UDim.new(0, 7)
+
+local NoticeStroke = Instance.new("UIStroke")
+NoticeStroke.Color = THEME.Red
+NoticeStroke.Thickness = 1
+NoticeStroke.Parent = Notice
+
+local NoticeText = Instance.new("TextLabel")
+NoticeText.Size = UDim2.new(1, -12, 1, 0)
+NoticeText.Position = UDim2.fromOffset(6, 0)
+NoticeText.BackgroundTransparency = 1
+NoticeText.Text = ""
+NoticeText.TextColor3 = THEME.White
+NoticeText.TextSize = 11
+NoticeText.Font = Enum.Font.GothamBold
+NoticeText.TextTruncate = Enum.TextTruncate.AtEnd
+NoticeText.Parent = Notice
+
+local function ShowNotice(message: string, success: boolean)
+	Notice.Visible = true
+	Notice.BackgroundColor3 = success and THEME.SuccessBg or THEME.ErrorBg
+	NoticeStroke.Color = success and THEME.SuccessBorder or THEME.Red
+	NoticeText.TextColor3 = success and THEME.SuccessText or THEME.ErrorText
+	NoticeText.Text = message
+end
+
+-- Safe Shake relative to current position
+local isShaking = false
+local function Shake()
+	if isShaking then
+		return
+	end
+	isShaking = true
+
+	local origin = Main.Position
+	local offset = 8
+
+	task.spawn(function()
+		for i = 1, 4 do
+			local dir = (i % 2 == 0) and offset or -offset
+			local t = TweenService:Create(Main, TweenInfo.new(0.045), {
+				Position = UDim2.new(origin.X.Scale, origin.X.Offset + dir, origin.Y.Scale, origin.Y.Offset),
+			})
+			t:Play()
+			t.Completed:Wait()
+		end
+
+		local reset = TweenService:Create(Main, TweenInfo.new(0.1), {
+			Position = origin,
+		})
+		reset:Play()
+		reset.Completed:Wait()
+		isShaking = false
+	end)
+end
+
+-- Clear text simultaneously with shake on invalid input
+local function RejectInput(message: string)
+	ShowNotice(message, false)
+	Input.Text = ""
+	Input.TextXAlignment = Enum.TextXAlignment.Left
+	Shake()
+end
+
+local function OnKeyAccepted(key: string)
+	WriteKeyCache(key, os.time())
+	ShowNotice("Key valid!", true)
+
+	task.delay(0.35, function()
+		if ScreenGui and ScreenGui.Parent then
+			ScreenGui:Destroy()
+		end
+		RunMainScript()
+	end)
+end
+
+-- Button handlers
+Check.MouseButton1Click:Connect(function()
+	local entered = Input.Text:match("^%s*(.-)%s*$") or ""
+	if entered == "" then
+		RejectInput("Please enter a key!")
+		return
+	end
+
+	if IsKeyValid(entered) then
+		OnKeyAccepted(entered)
+	else
+		RejectInput("Invalid key!")
+	end
+end)
+
+GetKey.MouseButton1Click:Connect(function()
+	if CopyToClipboard(GET_KEY_URL) then
+		ShowNotice("Key link copied to clipboard!", true)
+	else
+		ShowNotice("Get Key link: " .. GET_KEY_URL, false)
+	end
+end)
+
+-- Input focus animation
+Input.Focused:Connect(function()
+	TweenService:Create(InputStroke, TweenInfo.new(0.2), {
+		Color = THEME.Red,
+		Thickness = 1.5,
+	}):Play()
+end)
+
+Input.FocusLost:Connect(function()
+	TweenService:Create(InputStroke, TweenInfo.new(0.2), {
+		Color = THEME.Border,
+		Thickness = 1,
+	}):Play()
+end)
+
+-- Entrance animation
+local targetScale = Scale.Scale
+Scale.Scale = math.max(targetScale * 0.75, 0.5)
+TweenService:Create(
+	Scale,
+	TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+	{ Scale = targetScale }
+):Play()
+
+ScreenGui.Enabled = true
+Main.Visible = true
